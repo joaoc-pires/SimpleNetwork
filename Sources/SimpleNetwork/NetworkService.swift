@@ -8,7 +8,7 @@
 import Foundation
 import OSLog
 
-final class NetworkService {
+final public class NetworkService {
     
     private var log: Logger
     
