@@ -8,15 +8,15 @@
 import Foundation
 import OSLog
 
-class NetworkService {
+final class NetworkService {
     
     private var log: Logger
     
-    init() {
+    public init() {
         log = Logger(subsystem: "SimpleNetwork", category: "NetworkService")
     }
     
-    func fire(request: NetworkRequest, ignoreEtag: Bool = false, completion: @escaping (Result<Data, NetworkError>) -> (Void)) {
+    public func fire(request: NetworkRequest, ignoreEtag: Bool = false, completion: @escaping (Result<Data, NetworkError>) -> (Void)) {
         log.info("creating session at '\(request.url)'")
         let urlString = "\(request.url.lowercased().replacingOccurrences(of: "https://", with: "https://"))"
         guard let callURL = URL(string: urlString) else {
@@ -63,7 +63,7 @@ class NetworkService {
     }
     
     
-    func fire(request: NetworkRequest, ignoreEtag: Bool = false) async throws -> Data {
+    public func fire(request: NetworkRequest, ignoreEtag: Bool = false) async throws -> Data {
         try await withCheckedThrowingContinuation { continuation in
             fire(request: request) { result in
                 switch result {
