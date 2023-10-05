@@ -18,7 +18,7 @@ final public class NetworkService {
     
     public func fire(request: NetworkRequest, ignoreEtag: Bool = false, completion: @escaping (Result<Data, NetworkError>) -> (Void)) {
         log.info("creating session at '\(request.url)'")
-        let urlString = "\(request.url.lowercased().replacingOccurrences(of: "https://", with: "https://"))"
+        let urlString = "\(request.url.lowercased().replacingOccurrences(of: "http://", with: "https://"))"
         guard let callURL = URL(string: urlString) else {
             log.error("failed to create sessions at '\(request.url)', '\(NetworkError.invalidURL)'")
             completion(.failure(.invalidURL))
