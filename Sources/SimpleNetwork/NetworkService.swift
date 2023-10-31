@@ -12,9 +12,28 @@ final public class NetworkService {
     
     private var log: Logger
     
+    private class BasicRequest: NetworkRequest {
+        var url: String
+        
+        var method: HTTPMethod { .get }
+        
+        var eTag: String?
+        
+        var sessionDelegate: (URLSessionTaskDelegate)?
+        
+        init(url: String) {
+            self.url = url
+        }
+        
+        func getETagDataIfAvailable(_ response: HTTPURLResponse, _ data: Data) -> Data? {
+            nil
+        }
+    }
+    
     public init() {
         log = Logger(subsystem: "SimpleNetwork", category: "NetworkService")
     }
+
     
     public func fire(request: NetworkRequest, ignoreEtag: Bool = false, completion: @escaping (Result<Data, NetworkError>) -> (Void)) {
         log.info("creating session at '\(request.url)'")
@@ -63,6 +82,12 @@ final public class NetworkService {
     }
     
     
+    public func fire(at requestURL: String, ignoreEtag: Bool = false, completion: @escaping (Result<Data, NetworkError>) -> (Void)) {
+        let request = BasicRequest(url: requestURL)
+        fire(request: request, ignoreEtag: ignoreEtag, completion: completion)
+    }
+    
+    
     public func fire(request: NetworkRequest, ignoreEtag: Bool = false) async throws -> Data {
         try await withCheckedThrowingContinuation { continuation in
             fire(request: request) { result in
@@ -73,5 +98,18 @@ final public class NetworkService {
             }
         }
     }
+    
+    
+    public func fire(at requestURL: String, ignoreEtag: Bool = false) async throws -> Data {
+        try await withCheckedThrowingContinuation { continuation in
+            fire(at: requestURL) { result in
+                switch result {
+                    case .success(let data): continuation.resume(returning: data)
+                    case .failure(let error): continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     
 }
