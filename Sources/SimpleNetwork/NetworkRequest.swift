@@ -14,7 +14,6 @@ public protocol NetworkRequest {
     var eTag: String? { get }
     var customHeaders: [String : String]? { get }
     var sessionDelegate: (URLSessionDelegate & URLSessionTaskDelegate)? { get }
-    func getETagDataIfAvailable(_ response: HTTPURLResponse, _ data: Data) -> Data?
 }
 
 public extension NetworkRequest {

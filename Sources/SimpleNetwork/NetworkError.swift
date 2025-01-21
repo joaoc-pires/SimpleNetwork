@@ -17,4 +17,5 @@ public enum NetworkError: Error {
     case noData
     case custom(message: String)
     case invalidURL
+    case cached
 }
