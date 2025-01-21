@@ -126,12 +126,20 @@ final public class NetworkService {
             self.log.error("request at '\(request.url)' return code \(response.statusCode)")
             throw .serverFailure(withHTTPCode: response.statusCode, rawData: result.data)
         }
-        if let cachedData = request.getETagDataIfAvailable(response, result.data) {
-            self.log.info("sending cached data for session at '\(urlString)'")
-            return cachedData
+        if response.statusCode == 304 {
+            if let cachedData = request.getETagDataIfAvailable(response, result.data) {
+                self.log.info("sending cached data for session at '\(urlString)'")
+                return cachedData
+            }
+            else {
+                self.log.info("failed to fetch cached data, starting new session at '\(urlString)' ignoring ETag")
+                return try await fire(request: request, ignoreEtag: true)
+            }
         }
-        self.log.info("successfully finished session at '\(urlString)'")
-        return result.data
+        else {
+            self.log.info("successfully finished session at '\(urlString)'")
+            return result.data
+        }
     }
     
     
