@@ -88,27 +88,55 @@ final public class NetworkService {
     }
     
     
-    public func fire(request: NetworkRequest, ignoreEtag: Bool = false) async throws -> Data {
-        try await withCheckedThrowingContinuation { continuation in
-            fire(request: request) { result in
-                switch result {
-                    case .success(let data): continuation.resume(returning: data)
-                    case .failure(let error): continuation.resume(throwing: error)
-                }
+    public func fire(request: NetworkRequest, ignoreEtag: Bool = false) async throws(NetworkError) -> Data {
+        log.info("creating session at '\(request.url)'")
+        let urlString = "\(request.url.replacingOccurrences(of: "http://", with: "https://"))"
+        guard let callURL = URL(string: urlString) else {
+            log.error("failed to create sessions at '\(request.url)', '\(NetworkError.invalidURL)'")
+            throw .invalidURL
+        }
+        var urlRequest = URLRequest(url: callURL)
+        urlRequest.httpMethod = request.method.rawValue
+        urlRequest.httpBody = request.body
+        urlRequest.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+        if !ignoreEtag, let etag = request.eTag {
+            urlRequest.setValue(etag, forHTTPHeaderField: "If-None-Match")
+        }
+        urlRequest.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Accept")
+        let config = URLSessionConfiguration.default
+        let urlSession = URLSession(configuration: config, delegate: request.sessionDelegate, delegateQueue: nil)
+        let result: (data: Data, response: URLResponse)
+        do {
+            result = try await urlSession.data(for: urlRequest)
+        }
+        catch {
+            if let error = error as NSError?, error.domain == NSURLErrorDomain && error.code == NSURLErrorCancelled {
+                self.log.info("failed session at '\(urlString)' with error '\(error)', '\(error.localizedDescription)'")
+                throw .noData
+            }
+            else {
+                throw .custom(message: "unknown error")
             }
         }
+        guard let response = result.response as? HTTPURLResponse else {
+            self.log.info("failed session at '\(urlString)' with no data")
+            throw .noData
+        }
+        guard (200 ... 299) ~= response.statusCode || response.statusCode == 304 else {
+            self.log.error("request at '\(request.url)' return code \(response.statusCode)")
+            throw .serverFailure(withHTTPCode: response.statusCode, rawData: result.data)
+        }
+        if let cachedData = request.getETagDataIfAvailable(response, result.data) {
+            self.log.info("sending cached data for session at '\(urlString)'")
+            return cachedData
+        }
+        self.log.info("successfully finished session at '\(urlString)'")
+        return result.data
     }
     
     
     public func fire(at requestURL: String, ignoreEtag: Bool = false) async throws -> Data {
-        try await withCheckedThrowingContinuation { continuation in
-            fire(at: requestURL) { result in
-                switch result {
-                    case .success(let data): continuation.resume(returning: data)
-                    case .failure(let error): continuation.resume(throwing: error)
-                }
-            }
-        }
+        try await fire(request: BasicRequest(url: requestURL), ignoreEtag: ignoreEtag)
     }
 
     
